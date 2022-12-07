@@ -1,2 +1,2 @@
 # Lab2
-SMPT client
+Simple smpt client
