@@ -1,5 +1,6 @@
 # Документация к проекту
 Данный проект является документацией к Smpt клиенту с асинхронной реализацией и защитой UI thread. 
+
 [Что такое ConfigureAwait(false)](https://devblogs.microsoft.com/dotnet/configureawait-faq/)
 
 # Оглавление
