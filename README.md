@@ -136,7 +136,7 @@ public class Message
 Далее будет также использоваться класс для прикрепленных файлов.
 
 ## Утилиты
-###Кодировка в Base64
+### Кодировка в Base64
 ```c#
 public static string Base64Encode(string data, Encoding e = null)
         {
@@ -148,7 +148,7 @@ public static string Base64Encode(string data, Encoding e = null)
         }
 ```
 
-###Декодировка из Base64
+### Декодировка из Base64
 ```c#
 public static string Base64Decode(string base64, Encoding e = null)
         {
@@ -160,7 +160,7 @@ public static string Base64Decode(string base64, Encoding e = null)
         }
 ```
 
-###Кодировка в Base64 EXTENDED
+### Кодировка в Base64 EXTENDED
 ```c#
  public static string Base64ExtendedWordEncode(string data, Encoding e = null)
         {
@@ -171,7 +171,7 @@ public static string Base64Decode(string base64, Encoding e = null)
         }
 ```
 
-###Метод для указания кому отправлять
+### Метод для указания кому отправлять
 ```c#
 public static string RcptMerge(string[] to)
         {
