@@ -1,10 +1,11 @@
-﻿using System.Text;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Text;
 
 namespace SmptClient
 {
     public class Utils
     {
-        public static string Base64Encode(string data, Encoding e = null)
+        public static string Base64Encode(string data, Encoding? e = null)
         {
             if (data == null) return "";
 
@@ -13,7 +14,7 @@ namespace SmptClient
             return Convert.ToBase64String(buffer);
         }
 
-        public static string Base64Decode(string base64, Encoding e = null)
+        public static string Base64Decode(string base64, Encoding? e = null)
         {
             if (base64 == null) return "";
 
@@ -22,7 +23,9 @@ namespace SmptClient
             return e.GetString(buffer);
         }
 
-        public static string Base64ExtendedWordEncode(string data, Encoding e = null)
+        public static bool IsNotNull([NotNullWhen(true)] object? obj) => obj != null;
+
+        public static string Base64ExtendedWordEncode(string data, Encoding? e = null)
         {
             if (data == null) return "";
 
