@@ -243,3 +243,4 @@ var message = new SmptClient.Message()
 
 await smptClient.SendAndQuitAsync(username, password, message);
 ```
+## Второй способ находится в Program.cs
