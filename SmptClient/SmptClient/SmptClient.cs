@@ -225,7 +225,7 @@ namespace SmptClient
             }
         }
 
-        public async Task SendAndQuit(string username, string password, Message message)
+        public async Task SendAndQuitAsync(string username, string password, Message message)
         {
             using (var stream = await ConnectAsync(Host, Port, SSL).ConfigureAwait(false))
             {
