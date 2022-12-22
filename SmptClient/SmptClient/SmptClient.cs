@@ -35,7 +35,7 @@ namespace SmptClient
         /// <param name="stream"></param>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
-        private async Task HandshakeAsync(Stream stream)
+        public async Task HandshakeAsync(Stream stream)
         {
             //stream set-up
             using StreamReader? reader = new(stream, Encoding.ASCII, false, 4096, true);
@@ -44,18 +44,16 @@ namespace SmptClient
 
             var line = await reader.ReadLineAsync().ConfigureAwait(false);
 
-            //todo: make class of exeptions and check them
-            if (!line!.StartsWith("220 ")) throw new Exception("200 error code expetion");
+            if (!line!.StartsWith("220 ")) throw new Exception($"epxected 200 |GOT: {line}");
 
             writer.WriteLine("EHLO " + Host);
             line = await reader.ReadLineAsync().ConfigureAwait(false);
             while (line!.StartsWith("250-")) //TODO: analyze supported
             {
                 line = await reader.ReadLineAsync().ConfigureAwait(false);
-                Console.WriteLine(line);
             }
 
-            if (!line.StartsWith("250 ")) throw new Exception("Unable to complete the SMTP handshake");
+            if (!line.StartsWith("250 ")) throw new Exception($"Unable to complete the SMTP handshake |GOT: {line}");
         }
 
         /// <summary>
@@ -66,7 +64,7 @@ namespace SmptClient
         /// <param name="ssl"></param>
         /// <returns>Socket IO stream</returns>
         /// <exception cref="Exception"></exception>
-        private static async Task<Stream> ConnectAsync(string host, int port, bool ssl)
+        public async Task<Stream> ConnectAsync(string host, int port, bool ssl)
         {
             var client = new TcpClient();
             await client.ConnectAsync(host, port).ConfigureAwait(false);
@@ -86,7 +84,7 @@ namespace SmptClient
             return ssl_stream;
         }
 
-        private static async Task LoginAsync(Stream stream, string username, string password)
+        public async Task LoginAsync(Stream stream, string username, string password)
         {
             //stream set-up
             using StreamReader? reader = new(stream, Encoding.ASCII, false, 4096, true);
@@ -96,7 +94,7 @@ namespace SmptClient
             await writer.WriteLineAsync("AUTH LOGIN").ConfigureAwait(false); //login request
 
             string line = (await reader.ReadLineAsync().ConfigureAwait(false))!;
-            if (!line!.StartsWith("334 ")) throw new Exception("Expected 334 response");
+            if (!line!.StartsWith("334 ")) throw new Exception($"Expected 334 response |GOT: {line}");
 
             //send login
             line = line[4..];
@@ -106,7 +104,7 @@ namespace SmptClient
 
             //send pass
             line = (await reader.ReadLineAsync().ConfigureAwait(false))!;
-            if (!line!.StartsWith("334 ")) throw new Exception("Expected: 334 response");
+            if (!line!.StartsWith("334 ")) throw new Exception($"Expected: 334 response |GOT: {line}");
             line = line[4..];
             line = Utils.Base64Decode(line);
             if (line.ToLower() != "password:") throw new Exception("Expected: password");          
@@ -114,11 +112,11 @@ namespace SmptClient
 
             //results
             line = (await reader.ReadLineAsync().ConfigureAwait(false))!;
-            if (line!.StartsWith("5")) throw new Exception("Unable to login");      
+            if (line!.StartsWith("5")) throw new Exception($"Unable to login |GOT: {line}");      
             else if (!line.StartsWith("235 ")) throw new Exception("Login or password is wrong");            
         }
 
-        private async Task SendAsync(Stream stream, Message message)
+        public async Task SendAsync(Stream stream, Message message)
         {
             using (var reader = new StreamReader(stream, Encoding.ASCII, false, 4096, true))
             using (var writer = new StreamWriter(stream, Encoding.ASCII, 4096, true))
@@ -128,7 +126,7 @@ namespace SmptClient
                 await writer.WriteLineAsync("MAIL FROM: <" + message.From + ">").ConfigureAwait(false);
                 string line = (await reader.ReadLineAsync().ConfigureAwait(false))!;
                 if (!line!.StartsWith("250 "))
-                throw new Exception("Unexpected response received while sending: MAIL FROM");
+                throw new Exception($"Unexpected response received while sending: MAIL FROM |GOT: {line}");
                 
 
                 //recipients
@@ -136,13 +134,13 @@ namespace SmptClient
                 {
                     await writer.WriteLineAsync("RCPT TO: <" + r + ">").ConfigureAwait(false);
                     line = (await reader.ReadLineAsync().ConfigureAwait(false))!;
-                    if (!line!.StartsWith("250 "))  throw new Exception("Unexpected response received while sending：RCPT TO");                    
+                    if (!line!.StartsWith("250 "))  throw new Exception($"Unexpected response received while sending：RCPT TO |GOT: {line}");                    
                 }
 
                 //prepare text
                 await writer.WriteLineAsync("DATA").ConfigureAwait(false);
                 line = (await reader.ReadLineAsync().ConfigureAwait(false))!;
-                if (!line!.StartsWith("354 ")) throw new Exception("Unexpected response received while sending：DATA");           
+                if (!line!.StartsWith("354 ")) throw new Exception($"Unexpected response received while sending：DATA |GOT: {line}");           
 
                 //MIME
                 string boundary = "=====SMPT_NextPart" + DateTime.Now.Ticks + "=====";
@@ -173,11 +171,10 @@ namespace SmptClient
                 send += Utils.Base64Encode(message.Content!) + Environment.NewLine;
                 send += Environment.NewLine + "--" + boundary + Environment.NewLine;
 
-                Console.WriteLine(send);
                 await writer.WriteAsync(send).ConfigureAwait(false);
 
                 //Appending files
-                if (message.Files != null && message.Files.Count() > 0)
+                if (message.Files != null && message.Files.Any())
                 {
                     int index = 0;
                     byte[] buffer = new byte[1024 * 40 * 3];     //after Base64 encoding =
@@ -196,7 +193,6 @@ namespace SmptClient
                         {
                             string base64 = Convert.ToBase64String(buffer, 0, read);
 
-                            Console.WriteLine(base64);
                             await writer.WriteAsync(Convert.ToBase64String(buffer, 0, read)).ConfigureAwait(false);
                             read = await file.Stream.ReadAsync(buffer).ConfigureAwait(false);
                         }
@@ -211,24 +207,33 @@ namespace SmptClient
                 //Send method
                 await writer.WriteAsync("\r\n.\r\n").ConfigureAwait(false);
                 line = (await reader.ReadLineAsync().ConfigureAwait(false))!;
-                if (!line.StartsWith("250 ")) throw new Exception("Failed to send ");
-
-                //send quit
-                await writer.WriteAsync("QUIT\r\n").ConfigureAwait(false);
-                line = (await reader.ReadLineAsync().ConfigureAwait(false))!;
-                if (!line!.StartsWith("221 ")) throw new Exception("Can`t disconnect lmao, but I will");
+                if (!line.StartsWith("250 ")) throw new Exception($"Failed to send |GOT: {line}");              
             }
         }
 
-        public async Task SendAsync(string username, string password, Message message)
+        public async Task QuitAsync(Stream stream)
+        {
+            using (var reader = new StreamReader(stream, Encoding.ASCII, false, 4096, true))
+            using (var writer = new StreamWriter(stream, Encoding.ASCII, 4096, true))
+            {
+                writer.AutoFlush = true;
+
+                //send quit
+                await writer.WriteAsync("QUIT\r\n").ConfigureAwait(false);
+                string line = (await reader.ReadLineAsync().ConfigureAwait(false))!;
+                if (!line!.StartsWith("221 ")) throw new Exception($"Can`t disconnect lmao, but I will |GOT: {line}");
+            }
+        }
+
+        public async Task SendAndQuit(string username, string password, Message message)
         {
             using (var stream = await ConnectAsync(Host, Port, SSL).ConfigureAwait(false))
             {
                 await HandshakeAsync(stream).ConfigureAwait(false);
                 await LoginAsync(stream, username, password).ConfigureAwait(false);
                 await SendAsync(stream, message).ConfigureAwait(false);
+                await QuitAsync(stream).ConfigureAwait(false);
             }
         }
-
     }
 }
