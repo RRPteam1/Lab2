@@ -40,22 +40,26 @@ private async Task HandshakeAsync(Stream stream)
             var line = await reader.ReadLineAsync().ConfigureAwait(false);
 
             //todo: make class of exeptions and check them
-            if (!line.StartsWith("220 ")) throw new Exception("200 error code expetion");
+            if (!line!.StartsWith("220 ")) throw new Exception("200 error code expetion");
 
             writer.WriteLine("EHLO " + Host);
             line = await reader.ReadLineAsync().ConfigureAwait(false);
-            while (line.StartsWith("250-")) //TODO: analyze supported
+            while (line!.StartsWith("250-")) //TODO: analyze supported
+            {
                 line = await reader.ReadLineAsync().ConfigureAwait(false);
+                Console.WriteLine(line);
+            }
 
             if (!line.StartsWith("250 ")) throw new Exception("Unable to complete the SMTP handshake");
         }
+
 ```
 
 ## Подключение
 Используя TcpClient и аргуемент использования SSL. Если SSL не испоьзуется, тогда просто используем поток, который и так есть, иначе используя SslStream защищаем поток, который служит для взаимодействия между клиентом и сервером и использует протокол безопасности SSL для проверки подлинности сервера и при необходимости клиента.
 
 ```c#
- private async Task<Stream> ConnectAsync(string host, int port, bool ssl)
+private static async Task<Stream> ConnectAsync(string host, int port, bool ssl)
         {
             var client = new TcpClient();
             await client.ConnectAsync(host, port).ConfigureAwait(false);
@@ -87,7 +91,7 @@ line = line[4..];
 Данная подстрока нужна для того, чтобы отбросить ответ сервера с пробелом к примеру: "334 "
 
 ```c#
- private async Task LoginAsync(Stream stream, string username, string password)
+private static async Task LoginAsync(Stream stream, string username, string password)
         {
             //stream set-up
             using StreamReader? reader = new(stream, Encoding.ASCII, false, 4096, true);
@@ -96,8 +100,8 @@ line = line[4..];
 
             await writer.WriteLineAsync("AUTH LOGIN").ConfigureAwait(false); //login request
 
-            string line = await reader.ReadLineAsync().ConfigureAwait(false);
-            if (!line.StartsWith("334 ")) throw new Exception("Expected 334 response");
+            string line = (await reader.ReadLineAsync().ConfigureAwait(false))!;
+            if (!line!.StartsWith("334 ")) throw new Exception("Expected 334 response");
 
             //send login
             line = line[4..];
@@ -106,40 +110,55 @@ line = line[4..];
             await writer.WriteLineAsync(Utils.Base64Encode(username)).ConfigureAwait(false); 
 
             //send pass
-            line = await reader.ReadLineAsync().ConfigureAwait(false);
-            if (!line.StartsWith("334 ")) throw new Exception("Expected: 334 response");
+            line = (await reader.ReadLineAsync().ConfigureAwait(false))!;
+            if (!line!.StartsWith("334 ")) throw new Exception("Expected: 334 response");
             line = line[4..];
             line = Utils.Base64Decode(line);
             if (line.ToLower() != "password:") throw new Exception("Expected: password");          
             await writer.WriteLineAsync(Utils.Base64Encode(password)).ConfigureAwait(false);
 
             //results
-            line = await reader.ReadLineAsync().ConfigureAwait(false);
-            if (line.StartsWith("5")) throw new Exception("Unable to login");      
+            line = (await reader.ReadLineAsync().ConfigureAwait(false))!;
+            if (line!.StartsWith("5")) throw new Exception("Unable to login");      
             else if (!line.StartsWith("235 ")) throw new Exception("Login or password is wrong");            
         }
+
 ```
 
 ## Сообщение
 Это самый обычный DTO (Data Transfer Object) для удобства отправки сообщений. Т.к. в качестве recpt можно указать несколько получателей, то используется массив строк для передачи. Используется IEnumerable, т.к. изменение в этот момент не должно происходить.
 ```c#
-public class Message
+namespace SmptClient
+{
+    public class Message
     {
-        string From { get; set; } //mail of sender
-        IEnumerable<string> To { get; set; } //array of mails of recivers     
-        string Subject { get; set; } //subject of message
-        string Content { get; set; } //content of message
+        public string? Name { get; set; } //name of sender
+        public string? From { get; set; } //mail of sender
+        public IEnumerable<string>? To { get; set; } //array of mails of recivers     
+        public string? Subject { get; set; } //subject of message
+        public string? Content { get; set; } //content of message
 
-        //todo: bool is html
-        //todo: list of attached files
+        public bool IsHtml { get; set; }
+        public IEnumerable<Attachment>? Files { get; set; } //attached files (name, stream_data)
     }
+}
 ```
-_Далее будет также использоваться класс для прикрепленных файлов._
+Класс для прикрепленный файлов:
+```c#
+namespace SmptClient
+{
+    public class Attachment
+    {
+        public string? Name;
+        public Stream? Stream;
+    }
+}
+```
 
 ## Утилиты
 ### Кодировка в Base64
 ```c#
-public static string Base64Encode(string data, Encoding e = null)
+public static string Base64Encode(string data, Encoding? e = null)
         {
             if (data == null) return "";
 
@@ -151,7 +170,7 @@ public static string Base64Encode(string data, Encoding e = null)
 
 ### Декодировка из Base64
 ```c#
-public static string Base64Decode(string base64, Encoding e = null)
+public static string Base64Decode(string base64, Encoding? e = null)
         {
             if (base64 == null) return "";
 
@@ -163,7 +182,7 @@ public static string Base64Decode(string base64, Encoding e = null)
 
 ### Кодировка в Base64 EXTENDED
 ```c#
- public static string Base64ExtendedWordEncode(string data, Encoding e = null)
+ public static string Base64ExtendedWordEncode(string data, Encoding? e = null)
         {
             if (data == null) return "";
 
@@ -180,9 +199,10 @@ public static string RcptMerge(string[] to)
             if (to == null) return retval;
 
             int index;
-            for (index = 0; index < to.Length - 1; index++)          
+            for (index = 0; index < to.Length - 1; index++)
+            {
                 retval += "<" + to[index] + ">, ";
-            
+            }
             retval += "<" + to[index] + ">";
             return retval;
         }
@@ -190,11 +210,38 @@ public static string RcptMerge(string[] to)
 
 # Использование
 ```c#
-string server = "smtp.example.com";
+string server = "26.158.205.10:28"; //we can use ip and host for example: 192.168.0.1:3000 or server.example.com
 string username = "sender@example.com";
 string password = "examplePass";
 
-var message = new SmptClient.Message();
+
+var file1 = new SmptClient.Attachment();
+file1.Name = "atachment 1";
+FileStream fstream = File.OpenRead(Environment.GetFolderPath(Environment.SpecialFolder.Desktop) + "/" + "example.png"!); //actually here will be a path to the file
+
+byte[] buff = new byte[fstream.Length];
+await fstream.ReadAsync(buff, 0, buff.Length);
+file1.Stream = fstream;
+
+
+SmptClient.Attachment[] files = new SmptClient.Attachment[]
+{
+    file1,
+};
+
+
+var message = new SmptClient.Message()
+{
+    Name = "Example",
+    From = username,
+    To = new string[] { "recv1@example.com", "recv2@example.com" },
+
+    Subject = "Test",
+    Content = "<h1>Hello world!</h1>\n<p>this is same p tag.</p>",
+    IsHtml = true,
+    Files = files,
+};
+
 
 SmptClient.SmptClient smptClient = new(server);
 await smptClient.SendAsync(username, password, message);
