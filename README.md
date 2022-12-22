@@ -243,4 +243,4 @@ var message = new SmptClient.Message()
 
 await smptClient.SendAndQuitAsync(username, password, message);
 ```
-_Второй способ находится в Program.cs_
+[Второй способ](https://github.com/RRPteam1/Lab2/blob/d904bf17885cec9c3a5261ce636f3f6f08314028/SmptClient/SmptClient/Program.cs)
