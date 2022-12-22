@@ -1,6 +1,6 @@
 ﻿string server = "smtp.mail.ru:465"; //we can use ip and host for example: 26.158.205.10:28 or smtp.mail.ru:465
-string username = "k_kucherova@list.ru"; 
-string password = "S50KQjsQjwj9mBvs3R8c";
+string username = "********"; 
+string password = "********";
 
 Stream FileOpener(string name) //gets file from desktop
 {
