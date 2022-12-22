@@ -143,7 +143,7 @@ namespace SmptClient
     }
 }
 ```
-Класс для прикрепленный файлов:
+## Класс для прикрепленных файлов:
 ```c#
 namespace SmptClient
 {
