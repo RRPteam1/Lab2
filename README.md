@@ -209,6 +209,8 @@ public static string RcptMerge(string[] to)
 ```
 
 # Использование
+
+##Самый простой способ
 ```c#
 string server = "26.158.205.10:28"; //we can use ip and host for example: 192.168.0.1:3000 or server.example.com
 string username = "sender@example.com";
